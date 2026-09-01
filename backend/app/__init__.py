@@ -1,10 +1,10 @@
 from flask import Flask
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 from app.config import Config
 from app.extensions import db, jwt, migrate
 
-# Import models so SQLAlchemy knows about them.
 from app.models import (
     User,
     Policy,
@@ -13,6 +13,7 @@ from app.models import (
     AuditLog,
 )
 
+from app.routes.api import api_bp
 from app.routes.assessments import assessments_bp
 from app.routes.auth import auth_bp
 from app.routes.claims import claims_bp
@@ -30,13 +31,24 @@ def create_app(config_class=Config):
 
     app.config.from_object(config_class)
 
-    # Initialize extensions.
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
 
-    # Register routes.
+    CORS(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": [
+                    "http://localhost:3000",
+                    "http://127.0.0.1:3000",
+                ]
+            }
+        },
+    )
+
     app.register_blueprint(health_bp)
+    app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(auth_bp)
     app.register_blueprint(policies_bp)
     app.register_blueprint(claims_bp)
