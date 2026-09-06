@@ -1,7 +1,7 @@
 import pytest
+from models import db
 
-from app import create_app
-from app.extensions import db
+from backend.app import create_app
 
 
 class TestConfig:
@@ -10,9 +10,7 @@ class TestConfig:
     SECRET_KEY = "test-secret"
     JWT_SECRET_KEY = "test-jwt-secret"
 
-    SQLALCHEMY_DATABASE_URI = (
-        "sqlite:///:memory:"
-    )
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

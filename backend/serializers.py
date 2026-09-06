@@ -1,16 +1,15 @@
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
-from marshmallow import fields
-from app.models import User, Policy, Claim, Assessment, AuditLog
+from models import Assessment, AuditLog, Claim, Policy, User, db
 
-from app.models import db
 
 class UserSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = User
         load_instance = True
         sqla_session = db.session
-        # Exclude sensitive sensitive attributes from dump/dumps
+        # Exclude sensitive attributes from dump/dumps
         exclude = ("password_hash",)
+
 
 class PolicySchema(SQLAlchemyAutoSchema):
     class Meta:
@@ -19,6 +18,7 @@ class PolicySchema(SQLAlchemyAutoSchema):
         sqla_session = db.session
         include_fk = True
 
+
 class ClaimSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Claim
@@ -26,12 +26,14 @@ class ClaimSchema(SQLAlchemyAutoSchema):
         sqla_session = db.session
         include_fk = True
 
+
 class AssessmentSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Assessment
         load_instance = True
         sqla_session = db.session
         include_fk = True
+
 
 class AuditLogSchema(SQLAlchemyAutoSchema):
     class Meta:

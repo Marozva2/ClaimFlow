@@ -32,14 +32,30 @@ export async function apiRequest<T>(
     },
   );
 
-  const data = await response.json();
+  let data: unknown;
 
-  if (!response.ok) {
-    throw new Error(
-      data.error ||
-      "An unexpected error occurred.",
-    );
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
   }
 
-  return data;
+  if (!response.ok) {
+    const message =
+      typeof data === "object" &&
+      data !== null &&
+      "message" in data &&
+      typeof data.message === "string"
+        ? data.message
+        : typeof data === "object" &&
+            data !== null &&
+            "error" in data &&
+            typeof data.error === "string"
+          ? data.error
+          : `Request failed with status ${response.status}`;
+
+    throw new Error(message);
+  }
+
+  return data as T;
 }
