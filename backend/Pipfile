@@ -14,6 +14,7 @@ psycopg = "*"
 python-dotenv = "*"
 pytest = "*"
 pytest-flask = "*"
+marshmallow-sqlalchemy = "*"
 
 [dev-packages]
 

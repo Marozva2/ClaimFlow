@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "3fda10ee3bc0505a7f72cdbae26ae3de91c5756fca26fe036620983525456ee7"
+            "sha256": "34b200c126af0bbec684c7b457c74bceb936864f9d18018b52f5b4f88207b719"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -18,11 +18,11 @@
     "default": {
         "alembic": {
             "hashes": [
-                "sha256:b39018cb3d9413a19cbd54cf3c02ad33998641f0538eb77413a488a21c3e14be",
-                "sha256:e0fca0518118c78acc493e31bcb5402f190057aaf6df8b5b95ce94c4789cf648"
+                "sha256:297950a8a91f6770eb82bfbce9bea55c728b90a5386c6e81430191a319d138b0",
+                "sha256:32d553dcd577e6fe5c3c63e91468526d35e4dcecafe865d7db4e9b328fa93cb2"
             ],
             "markers": "python_version >= '3.10'",
-            "version": "==1.19.1"
+            "version": "==1.19.2"
         },
         "blinker": {
             "hashes": [
@@ -306,6 +306,15 @@
             "markers": "python_version >= '3.10'",
             "version": "==4.3.1"
         },
+        "marshmallow-sqlalchemy": {
+            "hashes": [
+                "sha256:3865232672f3dd38c4d5e4e85fdedce76904200742c3594948a2d11d0af93258",
+                "sha256:e51192c204770645a2fab0d72f44f8789272eef75951f84b1608d6b4b0bfe0e6"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.10'",
+            "version": "==1.5.0"
+        },
         "packaging": {
             "hashes": [
                 "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79",
@@ -327,12 +336,12 @@
                 "binary"
             ],
             "hashes": [
-                "sha256:b6bbc25ccf05c8fad3b061d9db2ef0909a555171b84b07f29458a447253d679a",
-                "sha256:e21207764952cff81b6b8bdacad9a3939f2793367fdac2987b3aac36a651b5bc"
+                "sha256:ce5aa5cdb4f9379f00f487590e5890bfa7df9a164648c969ffa628505e21af4e",
+                "sha256:d0a3d9ccf5788af054cbd745278cb02401b5c312aeaafbf2c6144460aec47da4"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==3.3.4"
+            "version": "==3.3.5"
         },
         "pygments": {
             "hashes": [
