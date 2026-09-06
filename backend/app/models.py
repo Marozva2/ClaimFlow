@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -8,6 +9,7 @@ db = SQLAlchemy()
 # ==============================================================================
 # MODELS
 # ==============================================================================
+
 
 class User(db.Model):
     __tablename__ = "users"
