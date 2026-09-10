@@ -1,6 +1,4 @@
-import os
-from datetime import timedelta
-
+from config import Config
 from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
@@ -16,32 +14,16 @@ migrate = Migrate()
 
 
 def create_app():
-    app = Flask(__name__)
-
-    # Load environment variables from .env file
     load_dotenv()
 
-    # Flask app configuration
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
-        "SQLALCHEMY_DATABASE_URI",
-        "postgresql+psycopg://claimflow:claimflow@localhost:5432/claimflow",
-    )
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=2)
-
-    # Mail configuration
-    app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
-    app.config["MAIL_PORT"] = os.getenv("MAIL_PORT")
-    app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "false").lower() == "true"
-    app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
-    app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+    app = Flask(__name__)
+    app.config.from_object(Config)
 
     # Initialize extensions
     db.init_app(app)
+    migrate.init_app(app, db)
     jwt.init_app(app)
     bcrypt.init_app(app)
-    migrate.init_app(app, db)
 
     # Register blueprints
     app.register_blueprint(auth_bp)
@@ -52,7 +34,11 @@ def create_app():
 
     CORS(
         app,
-        resources={r"*": {"origins": ["http://localhost:3000"]}},
+        resources={
+            r"/*": {
+                "origins": [app.config["FRONTEND_URL"]],
+            }
+        },
     )
 
     return app
@@ -61,4 +47,6 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")
+    app.run(
+        debug=app.config["DEBUG"],
+    )
