@@ -5,6 +5,7 @@ from flask_migrate import Migrate
 import redis
 from models import db
 from routes.assessments import assessment_bp
+from routes.admin import admin_bp
 from routes.auth import auth_bp, bcrypt, jwt
 from routes.claims import claims_bp
 from routes.health import health_bp
@@ -33,6 +34,7 @@ def create_app(config_object=Config):
 
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
+    app.register_blueprint(admin_bp, url_prefix="/api/v1")
     app.register_blueprint(health_bp, url_prefix="/api/v1")
     app.register_blueprint(assessment_bp, url_prefix="/api/v1")
     app.register_blueprint(policies_bp, url_prefix="/api/v1")
