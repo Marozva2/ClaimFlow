@@ -1,220 +1,154 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Script from "next/script";
+import { useRef } from "react";
 
-import { apiRequest } from "@/lib/api";
-import { User } from "@/types";
+import { useAuth } from "@/lib/auth";
 
-
-interface LoginResponse {
-  access_token: string;
-  user: User;
+interface GoogleIdentityResponse {
+  credential: string;
 }
 
+interface GoogleIdentityClient {
+  accounts: {
+    id: {
+      initialize: (options: {
+        client_id: string;
+        callback: (response: GoogleIdentityResponse) => void;
+      }) => void;
+      renderButton: (
+        target: HTMLElement,
+        options: {
+          theme: "outline";
+          size: "large";
+          text: "continue_with";
+          shape: "rectangular";
+          width: number;
+        },
+      ) => void;
+    };
+  };
+}
+
+declare global {
+  interface Window {
+    google?: GoogleIdentityClient;
+  }
+}
 
 export default function LoginPage() {
-  const router = useRouter();
+  return <Suspense fallback={<main className="min-h-screen bg-slate-50" />}><LoginForm /></Suspense>;
+}
 
+function LoginForm() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const { signIn, signInWithGoogle, ready, user } = useAuth();
+  const googleButton = useRef<HTMLDivElement>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleError, setGoogleError] = useState("");
 
+  useEffect(() => {
+    if (ready && user) router.replace(user.role === "customer" ? "/dashboard" : "/operations");
+  }, [ready, router, user]);
 
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
+  function initializeGoogle() {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId || !googleButton.current || !window.google) return;
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: async ({ credential }) => {
+        setGoogleError("");
+        setLoading(true);
+        try {
+          const authenticatedUser = await signInWithGoogle(credential);
+          router.replace(authenticatedUser.role === "customer" ? "/dashboard" : "/operations");
+        } catch (cause) {
+          setGoogleError(cause instanceof Error ? cause.message : "Google sign-in failed.");
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+    window.google.accounts.id.renderButton(googleButton.current, {
+      theme: "outline",
+      size: "large",
+      text: "continue_with",
+      shape: "rectangular",
+      width: 360,
+    });
+  }
+  if (ready && user) return null;
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setError("");
     setLoading(true);
-
     try {
-      const data =
-        await apiRequest<LoginResponse>(
-          "/api/v1/auth/login",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              email,
-              password,
-            }),
-          },
-        );
-
-      localStorage.setItem(
-        "claimflow_token",
-        data.access_token,
+      const authenticatedUser = await signIn(email.trim(), password);
+      router.replace(
+        authenticatedUser.role === "customer" ? "/dashboard" : "/operations",
       );
-
-      localStorage.setItem(
-        "claimflow_user",
-        JSON.stringify(data.user),
-      );
-
-      router.replace("/dashboard");
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to sign in.",
-      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to sign in.");
     } finally {
       setLoading(false);
     }
   }
 
-
   return (
-    <main className="grid min-h-screen lg:grid-cols-2">
+    <main className="grid min-h-screen bg-slate-50 lg:grid-cols-2">
       <section className="hidden bg-slate-900 p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-sm font-bold text-slate-900">
-              CF
-            </div>
-
-            <span className="text-lg font-semibold">
-              ClaimFlow
-            </span>
-          </div>
-        </div>
-
+        <Link href="/" className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-sm font-bold text-slate-900">CF</span>
+          <span className="text-lg font-semibold">ClaimFlow</span>
+        </Link>
         <div className="max-w-lg">
-          <p className="text-sm font-medium uppercase tracking-widest text-slate-400">
-            Insurance claims management
-          </p>
-
-          <h1 className="mt-5 text-5xl font-semibold leading-tight tracking-tight">
-            Keep every claim moving.
-          </h1>
-
-          <p className="mt-6 max-w-md text-lg leading-8 text-slate-300">
-            Manage policies, submit claims, and
-            follow every stage of the claims
-            process from one place.
+          <p className="text-sm font-semibold uppercase tracking-widest text-slate-400">Insurance operations</p>
+          <h1 className="mt-5 text-5xl font-semibold leading-tight tracking-tight">Every claim, clearly in motion.</h1>
+          <p className="mt-6 text-lg leading-8 text-slate-300">
+            A secure workspace for policies, claim progress, and insurance operations.
           </p>
         </div>
-
-        <p className="text-sm text-slate-500">
-          ClaimFlow © 2026
-        </p>
+        <p className="text-sm text-slate-500">ClaimFlow · Insurance operations</p>
       </section>
-
-
-      <section className="flex items-center justify-center bg-slate-50 p-6">
-        <div className="w-full max-w-md">
-          <div className="mb-8 lg:hidden">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">
-                CF
-              </div>
-
-              <span className="text-lg font-semibold text-slate-900">
-                ClaimFlow
-              </span>
-            </div>
-          </div>
-
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Welcome back</h2>
+          <p className="mt-2 text-sm text-slate-600">Sign in to your ClaimFlow account.</p>
+          {params.get("registered") === "1" && <p role="status" className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">Your account has been created. Sign in to continue.</p>}
+          {params.get("logout") === "failed" && <p role="alert" className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Your browser session has been cleared, but the server could not confirm token revocation. Contact an administrator if you suspect your session remains active elsewhere.</p>}
+          {error && <p role="alert" className="mt-5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">{error}</p>}
+          <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-                Welcome back
-              </h2>
-
-              <p className="mt-2 text-sm text-slate-500">
-                Sign in to access your ClaimFlow
-                account.
-              </p>
+              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-slate-700">Email address</label>
+              <input id="email" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-200" />
             </div>
-
-
-            {error && (
-              <div
-                role="alert"
-                className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
-              >
-                {error}
-              </div>
-            )}
-
-
-            <form
-              onSubmit={handleSubmit}
-              className="mt-6 space-y-5"
-            >
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-sm font-medium text-slate-700"
-                >
-                  Email address
-                </label>
-
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) =>
-                    setEmail(event.target.value)
-                  }
-                  required
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                  placeholder="you@example.com"
-                />
-              </div>
-
-
-              <div>
-                <label
-                  htmlFor="password"
-                  className="mb-2 block text-sm font-medium text-slate-700"
-                >
-                  Password
-                </label>
-
-                <input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(event) =>
-                    setPassword(event.target.value)
-                  }
-                  required
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                  placeholder="Enter your password"
-                />
-              </div>
-
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading
-                  ? "Signing in..."
-                  : "Sign in"}
-              </button>
-            </form>
-
-
-            <p className="mt-6 text-center text-sm text-slate-500">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/register"
-                className="font-medium text-slate-900 hover:underline"
-              >
-                Create one
-              </Link>
-            </p>
-          </div>
+            <div>
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-700">Password</label>
+              <input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-200" />
+            </div>
+            <button type="submit" disabled={loading} className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60">
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+          {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+            <>
+              <div className="my-5 flex items-center gap-3 text-xs text-slate-500"><span className="h-px flex-1 bg-slate-200" />or continue with<span className="h-px flex-1 bg-slate-200" /></div>
+              <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" onLoad={initializeGoogle} />
+              <div ref={googleButton} className="flex min-h-10 justify-center" />
+              {googleError && <p role="alert" className="mt-3 text-sm text-rose-800">{googleError}</p>}
+            </>
+          )}
+          <p className="mt-6 text-center text-sm text-slate-600">
+            New to ClaimFlow? <Link href="/register" className="font-semibold text-slate-950 underline-offset-4 hover:underline">Create an account</Link>
+          </p>
         </div>
       </section>
     </main>
