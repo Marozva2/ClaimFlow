@@ -1,7 +1,10 @@
+from decimal import Decimal
+
 from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restful import Api, Resource, abort, reqparse
-from models import Assessment, db
+from models import Assessment, AuditLog, Claim, db
+from routes.authz import roles_required
 from serializers import AssessmentSchema
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -11,84 +14,75 @@ api = Api(assessment_bp)
 assessment_schema = AssessmentSchema()
 assessments_schema = AssessmentSchema(many=True)
 
-# Input Validation Parsers
 assessment_post_parser = reqparse.RequestParser()
-assessment_post_parser.add_argument(
-    "claim_id", type=int, required=True, help="Claim ID is required"
-)
-assessment_post_parser.add_argument(
-    "recommendation", type=str, required=True, help="Recommendation is required"
-)
+assessment_post_parser.add_argument("claim_id", type=int, required=True)
+assessment_post_parser.add_argument("recommendation", type=str, required=True)
 assessment_post_parser.add_argument("approved_amount", type=float)
 assessment_post_parser.add_argument("notes", type=str)
-
-assessment_put_parser = reqparse.RequestParser()
-assessment_put_parser.add_argument("recommendation", type=str)
-assessment_put_parser.add_argument("approved_amount", type=float)
-assessment_put_parser.add_argument("notes", type=str)
 
 
 class AssessmentListResource(Resource):
     @jwt_required()
+    @roles_required("claims_officer", "admin")
     def get(self):
-        assessments = Assessment.query.all()
-        return assessments_schema.dump(assessments), 200
+        assessments = Assessment.query.order_by(Assessment.assessed_at.desc()).all()
+        return {"assessments": assessments_schema.dump(assessments)}, 200
 
     @jwt_required()
+    @roles_required("claims_officer", "admin")
     def post(self):
-        current_user_id = int(get_jwt_identity())
         args = assessment_post_parser.parse_args()
+        claim = db.get_or_404(Claim, args["claim_id"])
+        recommendation = args["recommendation"].lower()
+        if claim.status != "under_review":
+            abort(422, message="Only claims under review can be assessed.")
+        if recommendation not in {"approve", "reject", "request_information"}:
+            abort(422, message="Recommendation must be approve, reject, or request_information.")
 
-        new_assessment = Assessment(
-            claim_id=args["claim_id"],
-            assessor_id=current_user_id,
-            recommendation=args["recommendation"],
-            approved_amount=args.get("approved_amount"),
+        approved_amount = args.get("approved_amount")
+        if recommendation == "approve":
+            if approved_amount is None or approved_amount <= 0:
+                abort(422, message="An approval recommendation requires a positive amount.")
+            if Decimal(str(approved_amount)) > min(
+                claim.amount_claimed, claim.policy.coverage_amount
+            ):
+                abort(422, message="Recommended amount exceeds the claim or policy coverage.")
+        elif approved_amount is not None:
+            abort(422, message="Approved amount is only valid for an approval recommendation.")
+
+        assessment = Assessment(
+            claim_id=claim.id,
+            assessor_id=int(get_jwt_identity()),
+            recommendation=recommendation,
+            approved_amount=(
+                Decimal(str(approved_amount)) if approved_amount is not None else None
+            ),
             notes=args.get("notes"),
         )
-
         try:
-            db.session.add(new_assessment)
+            db.session.add(assessment)
+            db.session.flush()
+            db.session.add(
+                AuditLog(
+                    user_id=int(get_jwt_identity()),
+                    claim_id=claim.id,
+                    action="claim_assessed",
+                    description=f"Claim assessment recorded with recommendation: {recommendation}.",
+                )
+            )
             db.session.commit()
-            return assessment_schema.dump(new_assessment), 201
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             db.session.rollback()
-            abort(500, detail=str(e))
+            abort(500, message="Unable to record assessment.")
+        return assessment_schema.dump(assessment), 201
 
 
 class AssessmentResource(Resource):
     @jwt_required()
+    @roles_required("claims_officer", "admin")
     def get(self, assessment_id):
-        assessment = Assessment.query.get_or_404(assessment_id)
+        assessment = db.get_or_404(Assessment, assessment_id)
         return assessment_schema.dump(assessment), 200
-
-    @jwt_required()
-    def put(self, assessment_id):
-        assessment = Assessment.query.get_or_404(assessment_id)
-        args = assessment_put_parser.parse_args()
-
-        for key, value in args.items():
-            if value is not None:
-                setattr(assessment, key, value)
-
-        try:
-            db.session.commit()
-            return assessment_schema.dump(assessment), 200
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            abort(500, detail=str(e))
-
-    @jwt_required()
-    def delete(self, assessment_id):
-        assessment = Assessment.query.get_or_404(assessment_id)
-
-        try:
-            db.session.delete(assessment)
-            db.session.commit()
-            return {"message": f"Assessment {assessment_id} deleted successfully"}, 200
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            abort(500, detail=str(e))
 
 
 api.add_resource(AssessmentListResource, "/assessments")

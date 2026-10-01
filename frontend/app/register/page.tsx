@@ -39,7 +39,7 @@ export default function RegisterPage() {
 
     try {
       await apiRequest(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         {
           method: "POST",
           body: JSON.stringify({

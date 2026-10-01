@@ -7,12 +7,13 @@ from backend.app import create_app
 class TestConfig:
     TESTING = True
 
-    SECRET_KEY = "test-secret"
-    JWT_SECRET_KEY = "test-jwt-secret"
+    SECRET_KEY = "test-secret-key-for-claimflow-tests"
+    JWT_SECRET_KEY = "test-jwt-secret-key-for-claimflow-tests"
 
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    JWT_BLOCKLIST_ENABLED = False
 
 
 @pytest.fixture

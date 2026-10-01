@@ -1,6 +1,6 @@
 import os
+import time
 
-import redis
 from flask import Blueprint, current_app, request
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import (
@@ -22,16 +22,12 @@ jwt = JWTManager()
 auth_bp = Blueprint("auth_bp", __name__)
 api = Api(auth_bp)
 
-# Redis client for token revocation
-jwt_redis_blocklist = redis.StrictRedis(
-    host="localhost", port=6379, db=0, decode_responses=True
-)
-
-
 @jwt.token_in_blocklist_loader
 def check_if_token_is_revoked(jwt_header, jwt_payload):
+    if not current_app.config.get("JWT_BLOCKLIST_ENABLED", True):
+        return False
     jti = jwt_payload["jti"]
-    token_in_redis = jwt_redis_blocklist.get(jti)
+    token_in_redis = current_app.extensions["jwt_redis_blocklist"].get(jti)
     return token_in_redis is not None
 
 
@@ -47,8 +43,6 @@ signUp_args.add_argument("email", type=str, required=True, help="Email is requir
 signUp_args.add_argument(
     "password", type=str, required=True, help="Password is required"
 )
-signUp_args.add_argument("confirmPassword", type=str, required=True)
-
 login_args = reqparse.RequestParser()
 login_args.add_argument("email", type=str, required=True)
 login_args.add_argument("password", type=str, required=True)
@@ -60,9 +54,6 @@ class UserRegister(Resource):
 
         if User.query.filter_by(email=data["email"].lower()).first():
             abort(409, detail="User is already registered.")
-
-        if data["password"] != data["confirmPassword"]:
-            abort(422, detail="Passwords do not match")
 
         new_user = User(
             first_name=data["first_name"],
@@ -78,10 +69,16 @@ class UserRegister(Resource):
             db.session.rollback()
             abort(500, detail=str(e))
 
-        token = create_access_token(identity=str(new_user.id))
         return {
-            "detail": f"User {new_user.email} successfully created",
-            "access_token": token,
+            "message": "User registered successfully",
+            "user": {
+                "id": new_user.id,
+                "email": new_user.email,
+                "first_name": new_user.first_name,
+                "last_name": new_user.last_name,
+                "role": new_user.role,
+                "created_at": new_user.created_at.isoformat(),
+            },
         }, 201
 
 
@@ -94,14 +91,28 @@ class Login(Resource):
             abort(401, detail="Invalid email or password")
 
         token = create_access_token(identity=str(user.id))
-        return {"access_token": token, "user_id": user.id}, 200
+        return {
+            "access_token": token,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "role": user.role,
+                "created_at": user.created_at.isoformat(),
+            },
+        }, 200
 
 
 class UserLogout(Resource):
     @jwt_required()
     def post(self):
-        jti = get_jwt()["jti"]
-        jwt_redis_blocklist.set(jti, "", ex=7200)
+        claims = get_jwt()
+        jti = claims["jti"]
+        expires_in = max(claims["exp"] - int(time.time()), 1)
+        current_app.extensions["jwt_redis_blocklist"].set(
+            jti, "", ex=expires_in
+        )
         return {"message": "Successfully logged out"}, 200
 
 
@@ -132,7 +143,17 @@ class GoogleAuth(Resource):
                 db.session.commit()
 
             token = create_access_token(identity=str(user.id))
-            return {"access_token": token, "user_id": user.id}, 200
+            return {
+                "access_token": token,
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "role": user.role,
+                    "created_at": user.created_at.isoformat(),
+                },
+            }, 200
 
         except ValueError as e:
             return {"message": "Invalid token", "error": str(e)}, 400

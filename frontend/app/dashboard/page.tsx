@@ -67,26 +67,25 @@ export default function DashboardPage() {
       return;
     }
 
-    setUser(parsedUser);
-
     async function loadDashboard() {
       try {
         setLoading(true);
         setError("");
+        setUser(parsedUser);
 
         const [
           policiesResponse,
           claimsResponse,
         ] = await Promise.all([
           apiRequest<PoliciesResponse>(
-            "/api/policies",
+            "/api/v1/policies",
             {
               token: authToken,
             },
           ),
 
           apiRequest<ClaimsResponse>(
-            "/api/claims",
+            "/api/v1/claims",
             {
               token: authToken,
             },

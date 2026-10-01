@@ -1,3 +1,4 @@
+from marshmallow import fields
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from models import Assessment, AuditLog, Claim, Policy, User, db
 
@@ -12,6 +13,9 @@ class UserSchema(SQLAlchemyAutoSchema):
 
 
 class PolicySchema(SQLAlchemyAutoSchema):
+    premium = fields.Float()
+    coverage_amount = fields.Float()
+
     class Meta:
         model = Policy
         load_instance = True
@@ -20,6 +24,9 @@ class PolicySchema(SQLAlchemyAutoSchema):
 
 
 class ClaimSchema(SQLAlchemyAutoSchema):
+    amount_claimed = fields.Float()
+    amount_approved = fields.Float(allow_none=True)
+
     class Meta:
         model = Claim
         load_instance = True
@@ -28,6 +35,8 @@ class ClaimSchema(SQLAlchemyAutoSchema):
 
 
 class AssessmentSchema(SQLAlchemyAutoSchema):
+    approved_amount = fields.Float(allow_none=True)
+
     class Meta:
         model = Assessment
         load_instance = True

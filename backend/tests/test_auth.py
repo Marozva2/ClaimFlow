@@ -1,6 +1,6 @@
 def test_user_registration(client):
     response = client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "test@example.com",
             "password": "password123",
@@ -10,16 +10,11 @@ def test_user_registration(client):
     )
 
     assert response.status_code == 201
-
     data = response.get_json()
-
-    assert data["message"] == (
-        "User registered successfully"
-    )
-
-    assert data["user"]["email"] == (
-        "test@example.com"
-    )
+    assert data["message"] == "User registered successfully"
+    assert data["user"]["email"] == "test@example.com"
+    assert data["user"]["role"] == "customer"
+    assert "password_hash" not in data["user"]
 
 
 def test_duplicate_registration(client):
@@ -30,24 +25,13 @@ def test_duplicate_registration(client):
         "last_name": "User",
     }
 
-    first_response = client.post(
-        "/api/auth/register",
-        json=payload,
-    )
-
-    assert first_response.status_code == 201
-
-    second_response = client.post(
-        "/api/auth/register",
-        json=payload,
-    )
-
-    assert second_response.status_code == 409
+    assert client.post("/api/v1/auth/register", json=payload).status_code == 201
+    assert client.post("/api/v1/auth/register", json=payload).status_code == 409
 
 
-def test_login(client):
+def test_login_returns_frontend_user_shape(client):
     client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "login@example.com",
             "password": "password123",
@@ -57,18 +41,11 @@ def test_login(client):
     )
 
     response = client.post(
-        "/api/auth/login",
-        json={
-            "email": "login@example.com",
-            "password": "password123",
-        },
+        "/api/v1/auth/login",
+        json={"email": "login@example.com", "password": "password123"},
     )
 
     assert response.status_code == 200
-
     data = response.get_json()
-
-    assert "access_token" in data
-    assert data["user"]["email"] == (
-        "login@example.com"
-    )
+    assert data["access_token"]
+    assert data["user"]["email"] == "login@example.com"
