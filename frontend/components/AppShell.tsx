@@ -8,11 +8,14 @@ import {
   LayoutDashboard,
   LogOut,
   ShieldCheck,
+  Moon,
+  Sun,
   UserCircle,
 } from "lucide-react";
 import { ReactNode, useEffect } from "react";
 
 import { useAuth } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
 import { UserRole } from "@/types";
 
 const roleNames: Record<UserRole, string> = {
@@ -25,6 +28,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, ready, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     if (ready && !user) router.replace("/login");
@@ -145,6 +149,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+              title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-700"
+            >
+              {theme === "light" ? <Moon aria-hidden="true" className="h-4 w-4" /> : <Sun aria-hidden="true" className="h-4 w-4" />}
+            </button>
             <span className="hidden text-right sm:block">
               <span className="block text-sm font-medium text-slate-900">
                 {user.first_name} {user.last_name}

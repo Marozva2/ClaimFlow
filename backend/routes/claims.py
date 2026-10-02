@@ -61,9 +61,7 @@ class ClaimListResource(Resource):
     @jwt_required()
     def get(self):
         user = current_user()
-        query = Claim.query.join(Policy).join(
-            User, Policy.user_id == User.id
-        )
+        query = Claim.query.join(Policy).join(User, Policy.user_id == User.id)
         if not is_staff(user):
             query = query.filter(Policy.user_id == user.id)
         search = request.args.get("q", "").strip()
@@ -82,9 +80,7 @@ class ClaimListResource(Resource):
             )
         status = request.args.get("status", "").lower()
         if status == "open":
-            query = query.filter(
-                Claim.status.notin_(("settled", "closed", "rejected"))
-            )
+            query = query.filter(Claim.status.notin_(("settled", "closed", "rejected")))
         elif status:
             query = query.filter(Claim.status == status)
         policy_id = request.args.get("policy_id")
@@ -96,7 +92,8 @@ class ClaimListResource(Resource):
         try:
             if request.args.get("from"):
                 query = query.filter(
-                    Claim.submitted_at >= datetime.combine(
+                    Claim.submitted_at
+                    >= datetime.combine(
                         date.fromisoformat(request.args["from"]),
                         time.min,
                         tzinfo=timezone.utc,
@@ -118,7 +115,10 @@ class ClaimListResource(Resource):
             except ValueError:
                 abort(400, message="Pagination values must be positive integers.")
             if page < 1 or per_page < 1 or per_page > 100:
-                abort(400, message="Page must be positive and per_page must be between 1 and 100.")
+                abort(
+                    400,
+                    message="Page must be positive and per_page must be between 1 and 100.",
+                )
             pagination = query.order_by(Claim.submitted_at.desc()).paginate(
                 page=page, per_page=per_page, error_out=False
             )
@@ -147,15 +147,14 @@ class ClaimListResource(Resource):
     def post(self):
         user_id = int(get_jwt_identity())
         args = claim_post_parser.parse_args()
-        policy = Policy.query.filter_by(
-            id=args["policy_id"], user_id=user_id
-        ).first()
+        policy = Policy.query.filter_by(id=args["policy_id"], user_id=user_id).first()
         if policy is None:
             abort(404, message="Eligible policy not found.")
+        today = datetime.now(timezone.utc).date()
         if (
             policy.status.lower() != "active"
-            or policy.start_date > date.today()
-            or policy.end_date < date.today()
+            or policy.start_date > today
+            or policy.end_date < today
         ):
             abort(422, message="Claims can only be submitted against an active policy.")
         if args["amount_claimed"] <= 0:
@@ -220,17 +219,19 @@ class ClaimTransitionResource(Resource):
             expected_recommendation = (
                 "approve" if target_status == "approved" else "reject"
             )
-            approval = Assessment.query.filter_by(
-                claim_id=claim.id, recommendation=expected_recommendation
-            ).order_by(Assessment.assessed_at.desc()).first()
+            approval = (
+                Assessment.query.filter_by(
+                    claim_id=claim.id, recommendation=expected_recommendation
+                )
+                .order_by(Assessment.assessed_at.desc())
+                .first()
+            )
             if approval is None:
                 assessment_type = (
                     "approval" if target_status == "approved" else "rejection"
                 )
                 article = "an" if assessment_type == "approval" else "a"
-                decision = (
-                    "approving" if target_status == "approved" else "rejecting"
-                )
+                decision = "approving" if target_status == "approved" else "rejecting"
                 abort(
                     422,
                     message=f"Record {article} {assessment_type} assessment before {decision} this claim.",
@@ -239,11 +240,16 @@ class ClaimTransitionResource(Resource):
             if approval.approved_amount is None:
                 abort(422, message="The approval assessment has no recommended amount.")
             if approved_amount is None or approved_amount <= 0:
-                abort(422, message="An approved claim requires a positive approved amount.")
+                abort(
+                    422,
+                    message="An approved claim requires a positive approved amount.",
+                )
             if Decimal(str(approved_amount)) > min(
                 claim.amount_claimed, claim.policy.coverage_amount
             ):
-                abort(422, message="Approved amount exceeds the claim or policy coverage.")
+                abort(
+                    422, message="Approved amount exceeds the claim or policy coverage."
+                )
             if Decimal(str(approved_amount)) > approval.approved_amount:
                 abort(
                     422,
@@ -279,9 +285,11 @@ class ClaimAuditResource(Resource):
         if not is_staff(user):
             query = query.filter(Policy.user_id == user.id)
         claim = query.first_or_404()
-        logs = AuditLog.query.filter_by(claim_id=claim.id).order_by(
-            AuditLog.created_at.desc()
-        ).all()
+        logs = (
+            AuditLog.query.filter_by(claim_id=claim.id)
+            .order_by(AuditLog.created_at.desc())
+            .all()
+        )
         return {"events": audit_logs_schema.dump(logs)}, 200
 
 
@@ -290,9 +298,11 @@ class ClaimAssessmentsResource(Resource):
     @roles_required("claims_officer", "admin")
     def get(self, claim_id):
         db.get_or_404(Claim, claim_id)
-        assessments = Assessment.query.filter_by(claim_id=claim_id).order_by(
-            Assessment.assessed_at.desc()
-        ).all()
+        assessments = (
+            Assessment.query.filter_by(claim_id=claim_id)
+            .order_by(Assessment.assessed_at.desc())
+            .all()
+        )
         return {"assessments": assessment_schema.dump(assessments)}, 200
 
 
@@ -300,6 +310,4 @@ api.add_resource(ClaimListResource, "/claims")
 api.add_resource(ClaimResource, "/claims/<int:claim_id>")
 api.add_resource(ClaimTransitionResource, "/claims/<int:claim_id>/transitions")
 api.add_resource(ClaimAuditResource, "/claims/<int:claim_id>/audit")
-api.add_resource(
-    ClaimAssessmentsResource, "/claims/<int:claim_id>/assessments"
-)
+api.add_resource(ClaimAssessmentsResource, "/claims/<int:claim_id>/assessments")

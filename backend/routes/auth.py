@@ -52,22 +52,30 @@ class UserRegister(Resource):
     def post(self):
         data = signUp_args.parse_args()
 
-        if User.query.filter_by(email=data["email"].lower()).first():
+        email = data["email"].strip().lower()
+        first_name = data["first_name"].strip()
+        last_name = data["last_name"].strip()
+        if not first_name or not last_name:
+            abort(422, message="First and last name must not be empty.")
+        if len(data["password"]) < 8:
+            abort(422, message="Password must contain at least 8 characters.")
+
+        if User.query.filter_by(email=email).first():
             abort(409, detail="User is already registered.")
 
         new_user = User(
-            first_name=data["first_name"],
-            last_name=data["last_name"],
-            email=data["email"].lower(),
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
         )
         new_user.set_password(data["password"])
 
         try:
             db.session.add(new_user)
             db.session.commit()
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             db.session.rollback()
-            abort(500, detail=str(e))
+            abort(500, message="Unable to register account.")
 
         return {
             "message": "User registered successfully",
@@ -85,7 +93,7 @@ class UserRegister(Resource):
 class Login(Resource):
     def post(self):
         data = login_args.parse_args()
-        user = User.query.filter_by(email=data["email"].lower()).first()
+        user = User.query.filter_by(email=data["email"].strip().lower()).first()
 
         if not user or not user.check_password(data["password"]):
             abort(401, detail="Invalid email or password")
@@ -118,7 +126,10 @@ class UserLogout(Resource):
 
 class GoogleAuth(Resource):
     def post(self):
-        id_token_str = request.json.get("id_token")
+        payload = request.get_json(silent=True) or {}
+        id_token_str = payload.get("id_token")
+        if not id_token_str:
+            abort(400, message="Google credential is required.")
 
         try:
             idinfo = google_id_token.verify_oauth2_token(
@@ -127,7 +138,8 @@ class GoogleAuth(Resource):
                 current_app.config["GOOGLE_CLIENT_ID"],
             )
 
-            user = User.query.filter_by(email=idinfo["email"]).first()
+            email = idinfo["email"].strip().lower()
+            user = User.query.filter_by(email=email).first()
             if not user:
                 name_parts = idinfo.get("name", "Google User").split(" ", 1)
                 first_name = name_parts[0]
@@ -136,7 +148,7 @@ class GoogleAuth(Resource):
                 user = User(
                     first_name=first_name,
                     last_name=last_name,
-                    email=idinfo["email"],
+                    email=email,
                 )
                 user.set_password(os.urandom(24).hex())
                 db.session.add(user)
@@ -157,9 +169,9 @@ class GoogleAuth(Resource):
 
         except ValueError as e:
             return {"message": "Invalid token", "error": str(e)}, 400
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             db.session.rollback()
-            return {"message": "Database error", "error": str(e)}, 500
+            return {"message": "Unable to complete Google sign-in."}, 500
 
 
 api.add_resource(UserRegister, "/register")

@@ -17,3 +17,37 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Tailwind utility classes are used across all routes; these surface mappings
+   keep existing screens theme-aware without duplicating page markup. */
+[data-theme="dark"] body {
+  background: #0b1220;
+  color: #e5eaf2;
+}
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-white\/95 { background-color: #111b2b; }
+[data-theme="dark"] .bg-slate-50 { background-color: #0b1220; }
+[data-theme="dark"] .bg-slate-100 { background-color: #1a2638; }
+[data-theme="dark"] .bg-slate-200 { background-color: #27364b; }
+[data-theme="dark"] .bg-slate-900 { background-color: #334155; }
+[data-theme="dark"] .bg-gray-100 { background-color: #0b1220; }
+[data-theme="dark"] .text-slate-950,
+[data-theme="dark"] .text-slate-900 { color: #f1f5f9; }
+[data-theme="dark"] .text-slate-800 { color: #e2e8f0; }
+[data-theme="dark"] .text-slate-700,
+[data-theme="dark"] .text-slate-600 { color: #cbd5e1; }
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-400 { color: #94a3b8; }
+[data-theme="dark"] .text-gray-600 { color: #cbd5e1; }
+[data-theme="dark"] .border-slate-200 { border-color: #29384d; }
+[data-theme="dark"] .border-slate-300 { border-color: #3b4b61; }
+[data-theme="dark"] .hover\:bg-slate-50:hover { background-color: #1a2638; }
+[data-theme="dark"] .hover\:bg-slate-100:hover { background-color: #26354a; }
+[data-theme="dark"] .hover\:bg-slate-800:hover { background-color: #475569; }
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  color-scheme: dark;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: #94a3b8; }
