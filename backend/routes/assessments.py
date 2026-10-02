@@ -37,18 +37,30 @@ class AssessmentListResource(Resource):
         if claim.status != "under_review":
             abort(422, message="Only claims under review can be assessed.")
         if recommendation not in {"approve", "reject", "request_information"}:
-            abort(422, message="Recommendation must be approve, reject, or request_information.")
+            abort(
+                422,
+                message="Recommendation must be approve, reject, or request_information.",
+            )
 
         approved_amount = args.get("approved_amount")
         if recommendation == "approve":
             if approved_amount is None or approved_amount <= 0:
-                abort(422, message="An approval recommendation requires a positive amount.")
+                abort(
+                    422,
+                    message="An approval recommendation requires a positive amount.",
+                )
             if Decimal(str(approved_amount)) > min(
                 claim.amount_claimed, claim.policy.coverage_amount
             ):
-                abort(422, message="Recommended amount exceeds the claim or policy coverage.")
+                abort(
+                    422,
+                    message="Recommended amount exceeds the claim or policy coverage.",
+                )
         elif approved_amount is not None:
-            abort(422, message="Approved amount is only valid for an approval recommendation.")
+            abort(
+                422,
+                message="Approved amount is only valid for an approval recommendation.",
+            )
 
         assessment = Assessment(
             claim_id=claim.id,

@@ -22,6 +22,7 @@ jwt = JWTManager()
 auth_bp = Blueprint("auth_bp", __name__)
 api = Api(auth_bp)
 
+
 @jwt.token_in_blocklist_loader
 def check_if_token_is_revoked(jwt_header, jwt_payload):
     if not current_app.config.get("JWT_BLOCKLIST_ENABLED", True):
@@ -118,9 +119,7 @@ class UserLogout(Resource):
         claims = get_jwt()
         jti = claims["jti"]
         expires_in = max(claims["exp"] - int(time.time()), 1)
-        current_app.extensions["jwt_redis_blocklist"].set(
-            jti, "", ex=expires_in
-        )
+        current_app.extensions["jwt_redis_blocklist"].set(jti, "", ex=expires_in)
         return {"message": "Successfully logged out"}, 200
 
 

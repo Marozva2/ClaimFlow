@@ -3,11 +3,10 @@ from datetime import date, datetime, time, timedelta, timezone
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 from flask_restful import Api, Resource, abort
-from sqlalchemy import or_
-
 from models import AuditLog, User
 from routes.authz import roles_required
 from serializers import AuditLogSchema, UserSchema
+from sqlalchemy import or_
 
 admin_bp = Blueprint("admin_bp", __name__)
 api = Api(admin_bp)
@@ -22,7 +21,9 @@ def pagination_args():
     except ValueError:
         abort(400, message="Pagination values must be positive integers.")
     if page < 1 or per_page < 1 or per_page > 100:
-        abort(400, message="Page must be positive and per_page must be between 1 and 100.")
+        abort(
+            400, message="Page must be positive and per_page must be between 1 and 100."
+        )
     return page, per_page
 
 
@@ -79,7 +80,8 @@ class AdminAuditResource(Resource):
         try:
             if request.args.get("from"):
                 query = query.filter(
-                    AuditLog.created_at >= datetime.combine(
+                    AuditLog.created_at
+                    >= datetime.combine(
                         date.fromisoformat(request.args["from"]),
                         time.min,
                         tzinfo=timezone.utc,

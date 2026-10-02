@@ -1,11 +1,11 @@
+import redis
 from config import Config
 from flask import Flask
 from flask_cors import CORS
 from flask_migrate import Migrate
-import redis
 from models import db
-from routes.assessments import assessment_bp
 from routes.admin import admin_bp
+from routes.assessments import assessment_bp
 from routes.auth import auth_bp, bcrypt, jwt
 from routes.claims import claims_bp
 from routes.health import health_bp

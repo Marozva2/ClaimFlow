@@ -105,5 +105,6 @@ class PolicyResource(Resource):
             abort(500, message="Unable to update policy.")
         return policy_schema.dump(policy), 200
 
+
 api.add_resource(PolicyListResource, "/policies")
 api.add_resource(PolicyResource, "/policies/<int:policy_id>")
